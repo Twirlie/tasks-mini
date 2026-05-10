@@ -1,6 +1,7 @@
 pub mod board;
 pub mod column;
 pub mod domain;
+pub mod storage_port;
 pub mod task;
 
 #[tauri::command]

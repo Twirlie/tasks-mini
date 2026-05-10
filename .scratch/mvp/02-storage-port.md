@@ -1,9 +1,9 @@
 ---
 title: "Storage port trait and error types"
-status: "ready-for-agent"
+status: "completed"
 created: "2026-05-10T07:25:00Z"
 updated: "2026-05-10T07:28:00Z"
-labels: ["mvp", "enhancement", "ready-for-agent", "module:storage-port"]
+labels: ["mvp", "enhancement", "completed", "module:storage-port"]
 ---
 
 ## Parent
@@ -16,11 +16,11 @@ Define the `Storage` trait (port) that abstracts all persistence operations. Def
 
 ## Acceptance criteria
 
-- [ ] `Storage` trait with CRUD: load_board, save_board, create_task, update_task, delete_task, create_column, update_column, delete_column
-- [ ] `StorageError` enum covering: IO errors, serialization errors, validation errors, not found
-- [ ] All operations return `Result<T, StorageError>`
-- [ ] Mock storage implementation for testing
-- [ ] TDD cycles for mock storage contract compliance (see Agent Brief)
+- [x] `Storage` trait with CRUD: load_board, save_board, create_task, update_task, delete_task, create_column, update_column, delete_column
+- [x] `StorageError` enum covering: IO errors, serialization errors, validation errors, not found
+- [x] All operations return `Result<T, StorageError>`
+- [x] Mock storage implementation for testing
+- [x] TDD cycles for mock storage contract compliance (see Agent Brief)
 
 ## Blocked by
 
