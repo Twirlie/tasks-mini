@@ -18,12 +18,24 @@ Ports and adapters (hexagonal). Business logic in pure Rust modules; infrastruct
 
 ### Module layout (backend — `src-tauri/src/`)
 
-- `domain/` — core types (`Task`, `Column`, `Board`), validation, `DomainError`. No I/O.
+Each entity owns its types, validation, errors, and service logic in a self-contained module. Services depend on the `Storage` trait, never on concrete adapters.
+
+- `task/` — Task entity module
+  - `types.rs` — `Task` struct, `TaskError`, validation (title required ≤ 200 chars, description ≤ 2000 chars)
+  - `service.rs` — `create_task`, `update_task`, `delete_task`, `move_task` (sets `completed_at` when moved to Done)
+  - `mod.rs` — re-exports public API
+- `column/` — Column entity module
+  - `types.rs` — `Column` struct, `ColumnError`, validation (name required ≤ 50 chars, unique per board)
+  - `service.rs` — `add_column`, `rename_column`, `delete_column` (relocates tasks to first column)
+  - `mod.rs` — re-exports public API
+- `board/` — Board entity module
+  - `types.rs` — `Board` struct, `BoardError`, validation (unique column names, non-empty name)
+  - `service.rs` — `read_board`, default board construction (Backlog, Todo, In Progress, Done)
+  - `mod.rs` — re-exports public API
 - `storage_port/` — `Storage` trait (port) defining all persistence operations, `StorageError`, `MockStorage` for testing.
 - `json_storage/` — JSON file adapter implementing `Storage`. Data at `~/.local/share/tasks-mini/workflow/`. Auto-backup before writes, last 5 kept.
-- `column_service/` — column CRUD with task relocation on delete (moves tasks to first column).
-- `task_service/` — task CRUD and reordering.
-- `undo_redo/` — undo/redo for column changes.
+- `undo_redo/` — undo/redo for column changes. Depends on `column::service`.
+- `lib.rs` — Tauri IPC command handlers (thin translation layer, no business logic).
 
 ### Frontend (`src/`)
 
@@ -64,7 +76,8 @@ Cross-platform desktop: Windows, Linux, macOS.
 | Storage | The persistence trait (port) — not the concrete implementation |
 | JsonStorage | The JSON file adapter that implements Storage |
 | MockStorage | In-memory test double that implements Storage |
-| Column service | Business logic for column CRUD + task relocation |
-| Task service | Business logic for task CRUD + reordering |
+| `task/` module | Task entity — types, validation, service (CRUD + reordering) |
+| `column/` module | Column entity — types, validation, service (CRUD + task relocation) |
+| `board/` module | Board entity — types, validation, service (read + default construction) |
 | Undo/Redo | Command-pattern history for column mutations |
 | Schema version | Integer in JSON files driving incremental migration |

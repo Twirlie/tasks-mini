@@ -1,9 +1,9 @@
 ---
 title: "Domain types and validation"
-status: "ready-for-agent"
+status: "ready-for-human"
 created: "2026-05-10T07:25:00Z"
-updated: "2026-05-10T07:28:00Z"
-labels: ["mvp", "enhancement", "ready-for-agent", "module:domain"]
+updated: "2026-05-10T08:07:00Z"
+labels: ["mvp", "enhancement", "ready-for-human", "module:domain", "completed"]
 ---
 
 ## Parent
@@ -16,14 +16,14 @@ Define the core domain types (`Task`, `Column`, `Board`) with validation rules. 
 
 ## Acceptance criteria
 
-- [ ] `Task` type with: id, title, description, column_id, order, created_at, updated_at, completed_at
-- [ ] `Column` type with: id, name, order
-- [ ] `Board` type with: id, name, columns, schema_version
-- [ ] Validation: title max 200 chars, description max 2000 chars
-- [ ] Validation: column names unique per board, max 50 chars
-- [ ] Validation: task order non-negative integers
-- [ ] Unit tests for all types and validation rules
-- [ ] Tests for edge cases: empty strings, boundary values
+- [x] `Task` type with: id, title, description, column_id, order, created_at, updated_at, completed_at
+- [x] `Column` type with: id, name, order
+- [x] `Board` type with: id, name, columns, schema_version
+- [x] Validation: title max 200 chars, description max 2000 chars
+- [x] Validation: column names unique per board, max 50 chars
+- [x] Validation: task order non-negative integers
+- [x] Unit tests for all types and validation rules
+- [x] Tests for edge cases: empty strings, boundary values
 
 ## Blocked by
 
@@ -63,3 +63,5 @@ None - can start immediately
 - `thiserror = "2"`
 
 **Tests:** `#[cfg(test)]` module in same file. Cover validation rules, edge cases (empty strings, boundary lengths, duplicate column names), and constructors.
+
+> **Architecture update:** This flat `domain/` module will be split into entity-level modules (`task/`, `column/`, `board/`) each with their own `types.rs`, `service.rs`, and `mod.rs`. The types and validation logic implemented here will migrate to their respective entity modules. See `CONTEXT.md` for the target structure.

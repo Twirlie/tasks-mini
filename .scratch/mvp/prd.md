@@ -64,22 +64,31 @@ A cross-platform desktop application built with Rust, Tauri, and Leptos. Single-
 
 ### Module Architecture
 
-Following the ports and adapters pattern with modular architecture as specified in the mission statement. Deep modules with simple interfaces encapsulate complex functionality.
+Following the ports and adapters pattern with modular architecture as specified in the mission statement. Each entity owns its types, validation, errors, and service logic in a self-contained module. Deep modules with simple interfaces encapsulate complex functionality.
 
 **Modules to build:**
 
-1. **`domain`** — Core types and business rules
-   - Types: `Task`, `Column`, `Board`
-   - Validation: title max 200 chars, description max 2000 chars
-   - Invariants: column names unique, task order non-negative integers
-   - Pure logic, no I/O dependencies
+1. **`task/`** — Task entity module
+   - `types.rs` — `Task` struct, `TaskError`, validation (title required ≤ 200 chars, description ≤ 2000 chars)
+   - `service.rs` — `create_task`, `update_task`, `delete_task`, `move_task` (sets `completed_at` when moved to Done)
+   - `mod.rs` — re-exports public API
 
-2. **`storage_port`** — Storage interface trait
+2. **`column/`** — Column entity module
+   - `types.rs` — `Column` struct, `ColumnError`, validation (name required ≤ 50 chars, unique per board)
+   - `service.rs` — `add_column`, `rename_column`, `delete_column` (relocates tasks to first column)
+   - `mod.rs` — re-exports public API
+
+3. **`board/`** — Board entity module
+   - `types.rs` — `Board` struct, `BoardError`, validation (unique column names, non-empty name)
+   - `service.rs` — `read_board`, default board construction (Backlog, Todo, In Progress, Done)
+   - `mod.rs` — re-exports public API
+
+4. **`storage_port/`** — Storage interface trait
    - `Storage` trait defining CRUD operations
    - Return type: `Result<T, StorageError>`
    - Enables swapping implementations (JSON, SQLite, etc.)
 
-3. **`json_storage`** — File-based JSON persistence
+5. **`json_storage/`** — File-based JSON persistence
    - Implements `Storage` trait
    - Data directory: `~/.local/share/tasks-mini/workflow/`
    - File format: `tasks.json` with schema version field
@@ -87,25 +96,19 @@ Following the ports and adapters pattern with modular architecture as specified 
    - Keep last 5 backups with timestamps
    - Schema versioning for future migrations
 
-4. **`column_service`** — Column operations with side effects
-   - Handles add, rename, delete column operations
-   - On delete: moves tasks to first column (Backlog)
-   - Validation: column names unique, max 50 chars
-   - Delegates persistence to storage adapter
-
-5. **`undo_redo`** — Command pattern for reversible operations
+6. **`undo_redo/`** — Command pattern for reversible operations
    - Commands: `AddColumn`, `RenameColumn`, `DeleteColumn`
    - History stack with configurable max depth
    - Execute forward/backward
    - Persists to storage after each operation
-   - Does NOT contain task-movement logic (handled by column_service)
+   - Depends on `column::service`, does NOT contain task-movement logic
 
-6. **`tauri_commands`** — Tauri IPC command handlers
-   - Thin translation layer from IPC to domain
+7. **`lib.rs`** — Tauri IPC command handlers
+   - Thin translation layer from IPC to domain services
    - Error handling: convert domain errors to serializable responses
    - No business logic
 
-7. **`ui`** — Leptos frontend components
+8. **`ui`** — Leptos frontend components
    - Kanban board view with columns and tasks
    - Task form (create/edit)
    - Column management UI
@@ -173,35 +176,41 @@ Task {
 
 ### Module Test Coverage
 
-**`domain`** — Full unit test coverage
+**`task/`** — Full unit test coverage
 - Validation rules (title length, description length)
-- Business invariants (unique column names, task ordering)
-- Edge cases: empty strings, boundary values
+- CRUD operations with mocked storage
+- `move_task` sets `completed_at` on Done column
+- Edge cases: empty strings, boundary values, not-found errors
 
-**`storage_port`** — Trait verification via mock implementations
+**`column/`** — Full unit test coverage
+- Validation rules (name length, uniqueness)
+- CRUD operations with mocked storage
+- Task relocation on column delete
+- Cannot delete last column
+
+**`board/`** — Full unit test coverage
+- Validation: unique column names, non-empty name
+- Default board construction
+- Edge cases: empty board name, duplicate columns
+
+**`storage_port/`** — Trait verification via mock implementations
 - Mock storage for testing dependent modules
 - Verify contract compliance
 
-**`json_storage`** — Integration tests with temp directories
+**`json_storage/`** — Integration tests with temp directories
 - Read/write roundtrips
 - Backup creation and rotation
 - Schema versioning
 - Error handling: corrupt files, permission errors
 
-**`column_service`** — Unit tests with mocked storage
-- Add column validation
-- Rename column (including duplicate name handling)
-- Delete column (task movement behavior)
-- Error propagation
-
-**`undo_redo`** — Unit tests
+**`undo_redo/`** — Unit tests
 - Execute command
 - Undo single operation
 - Redo undone operation
 - Stack depth limits
 - History persistence
 
-**`tauri_commands`** — Minimal tests (thin layer)
+**`lib.rs` (Tauri commands)** — Minimal tests (thin layer)
 - Verify error conversion
 - Mock storage for integration tests
 

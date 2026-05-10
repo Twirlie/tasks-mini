@@ -1,0 +1,4 @@
+version = 1
+rules = [
+    { match = "AGENTS.md", action = { type = "context" } },
+]

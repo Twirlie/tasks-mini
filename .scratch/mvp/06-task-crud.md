@@ -23,12 +23,14 @@ End-to-end task CRUD: create (title required, description optional), read, updat
 - [ ] Timestamps: created_at, updated_at set on create/update; completed_at set when moved to Done
 - [ ] UI: task form (create/edit modal), task cards showing title + truncated description
 - [ ] UI: task cards show created/updated/completed dates
-- [ ] Tests for all CRUD operations with mocked storage
-- [ ] UI tests: form validation, state updates
+- [ ] TDD cycles for all CRUD operations with mocked storage (see Agent Brief)
+- [ ] TDD cycles for UI: form validation, state updates
 
 ## Blocked by
 
 - `.scratch/mvp/03-json-storage.md`
+- `.scratch/mvp/01b-board-module.md`
+- `.scratch/mvp/01d-task-types.md` (task types already exist, service adds logic)
 
 ---
 
@@ -36,24 +38,21 @@ End-to-end task CRUD: create (title required, description optional), read, updat
 
 ## Agent Brief
 
-**Goal:** Create the `task_crud` module in `src-tauri/src/task_crud/` implementing task CRUD operations, plus Tauri IPC command handlers for both tasks and the board.
+**Goal:** Add `service.rs` and update `mod.rs` in the `task` entity module (`src-tauri/src/task/`). Types and validation are already in `types.rs` from issue 01d. This issue adds the service layer with CRUD operations. Tauri IPC command handlers go in `lib.rs`.
 
-**Service functions:**
+**`types.rs`** — already exists from issue 01d (Task struct, TaskError with Validation/NotFound)
+
+**`service.rs` — business logic (this issue):**
+- Extend `TaskError` with service-level variants: `Storage(StorageError)`, `Board(BoardError)`, `TaskNotFound(String)`, `ColumnNotFound(String)`
 - `create_task(storage: &dyn Storage, title: String, description: Option<String>, column_id: String) -> Result<Task, TaskError>` — validates title (required, ≤ 200 chars) and description (≤ 2000 chars), generates UUID, sets timestamps, assigns next order in column, persists
 - `read_tasks(storage: &dyn Storage) -> Result<Board, TaskError>` — loads board
 - `update_task(storage: &dyn Storage, id: &str, title: Option<String>, description: Option<String>) -> Result<Task, TaskError>` — validates, updates `updated_at`, persists
 - `delete_task(storage: &dyn Storage, id: &str) -> Result<(), TaskError>` — removes task, persists
 - `move_task(storage: &dyn Storage, id: &str, column_id: &str, order: u32) -> Result<Task, TaskError>` — updates `column_id` and `order`, sets `completed_at` if moved to last column ("Done"), persists
 
-**Error enum:**
-```rust
-enum TaskError {
-    Storage(StorageError),
-    Domain(DomainError),
-    TaskNotFound(String),
-    ColumnNotFound(String),
-}
-```
+**`mod.rs`** — update re-exports to include `service::*`
+
+(TaskError extended in `service.rs` — see above)
 
 **Tauri commands (in same module or separate `tauri_commands` module):**
 - `get_board(state: State<'_, Storage>) -> Result<Board, String>`
@@ -64,9 +63,19 @@ enum TaskError {
 - Convert errors to strings for IPC (or implement `Serialize` on error types)
 
 **Implementation notes:**
-- Depends on `crate::domain` and `crate::storage_port`
+- Depends on `crate::board::types` for Board type
+- Depends on `crate::column::types` for Column type
+- Depends on `crate::storage_port::Storage` for persistence
 - `move_task` sets `completed_at = Some(Utc::now())` when task moves to the last column
 - Order assignment: find max order in target column, add 1
 - Register commands in `src-tauri/src/lib.rs` `invoke_handler`
 
-**Tests:** Unit tests with `MockStorage`. Test: create task, read board, update task, delete task, move task, validation errors, task/column not found, completed_at set on move to Done.
+**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
+1. `create_task rejects empty title` → validation logic → extract validation helper
+2. `create_task with valid input persists and returns Task` → full create path → clean up constructor
+3. `read_tasks returns Board from storage` → read path → consider Board vs Vec return type
+4. `update_task changes title and sets updated_at` → update path → extract shared persist logic
+5. `delete_task removes task from board` → delete path → no refactor needed
+6. `move_task to Done column sets completed_at` → move + completion logic → extract column resolution
+7. `update_task on non-existent id returns TaskNotFound` → error path → consolidate error matching
+8. `create_task with column not found returns ColumnNotFound` → column validation → done

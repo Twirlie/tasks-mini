@@ -21,12 +21,14 @@ Service layer for column operations: add, rename, delete. On column delete, auto
 - [ ] `delete_column(id)` - deletes column, moves tasks to first column
 - [ ] Validation: column names unique per board, max 50 chars
 - [ ] On delete: all tasks in deleted column get `column_id` set to first column id
-- [ ] Unit tests with mocked storage
-- [ ] Tests for: add, rename, delete with task relocation, validation errors, duplicate names
+- [ ] TDD cycles for unit tests with mocked storage (see Agent Brief)
 
 ## Blocked by
 
 - `.scratch/mvp/03-json-storage.md`
+- `.scratch/mvp/01b-board-module.md`
+- `.scratch/mvp/01c-column-types.md` (column types already exist, service adds logic)
+- `.scratch/mvp/01d-task-types.md` (service relocates tasks)
 
 ---
 
@@ -34,29 +36,32 @@ Service layer for column operations: add, rename, delete. On column delete, auto
 
 ## Agent Brief
 
-**Goal:** Create the `column_service` module in `src-tauri/src/column_service/` implementing column operations with task relocation.
+**Goal:** Add `service.rs` and update `mod.rs` in the `column` entity module (`src-tauri/src/column/`). Types and validation are already in `types.rs` from issue 01c. This issue adds the service layer with task relocation logic.
 
-**Functions to implement:**
+**`types.rs`** — already exists from issue 01c (Column struct, ColumnError with Validation/NotFound)
+
+**`service.rs` — business logic (this issue):**
+- Extend `ColumnError` with service-level variants: `Storage(StorageError)`, `Board(BoardError)`, `CannotDeleteLastColumn`, `ColumnNotFound(String)`
 - `add_column(storage: &dyn Storage, name: String) -> Result<Column, ColumnError>` — creates column with unique name, validates name ≤ 50 chars and unique per board, assigns next order value
 - `rename_column(storage: &dyn Storage, id: &str, name: String) -> Result<Column, ColumnError>` — validates new name is unique and ≤ 50 chars, updates column, persists
 - `delete_column(storage: &dyn Storage, id: &str) -> Result<(), ColumnError>` — deletes column, moves all tasks in that column to the first column (index 0), persists. Cannot delete the last column.
 
-**Error enum:**
-```rust
-enum ColumnError {
-    Storage(StorageError),
-    Domain(DomainError),
-    CannotDeleteLastColumn,
-    ColumnNotFound(String),
-}
-```
+**`mod.rs`** — update re-exports to include `service::*`
 
 **Implementation notes:**
-- Depends on `crate::domain` for types and validation
+- Depends on `crate::board::types` for Board type
+- Depends on `crate::task::types` for Task type
 - Depends on `crate::storage_port::Storage` for persistence
 - Load board → mutate in memory → save board pattern
 - On delete: iterate tasks, set `column_id` to `board.columns[0].id`
 - First column = index 0 in `board.columns`
 - Use `thiserror` for `ColumnError`
 
-**Tests:** Unit tests with `MockStorage`. Test: add column, rename, delete with task relocation, validation errors (duplicate name, name too long), cannot delete last column, column not found.
+**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
+1. `add_column rejects name over 50 chars` → validation logic → extract validate_column_name helper
+2. `add_column rejects duplicate name` → uniqueness check → no refactor
+3. `add_column with valid name persists and returns Column` → full add path → no refactor
+4. `rename_column updates name and persists` → rename path → extract load/mutate/save pattern
+5. `delete_column moves tasks to first column` → task relocation logic → no refactor
+6. `delete_column on last column returns CannotDeleteLastColumn` → guard logic → no refactor
+7. `rename_column and delete_column on missing id return ColumnNotFound` → error paths → consolidate not-found handling

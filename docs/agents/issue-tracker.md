@@ -31,6 +31,19 @@ assignee: "username" (optional)
 - `to-prd`: Converts conversation context to issue files
 - `qa`: Reads and updates existing issues
 
+## Agent Brief Format
+
+Agent briefs MUST include a **TDD Cycles** section instead of a flat "Tests" list. Each cycle is a vertical RED→GREEN→REFACTOR slice:
+
+```markdown
+**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
+1. `test description` → what to implement → refactor opportunity
+2. `test description` → what to implement → refactor opportunity
+...
+```
+
+This replaces flat `**Tests:** ...` sections. Agents execute one cycle at a time, never batch all tests then all implementation (horizontal slicing).
+
 ## Benefits
 
 - Issues are version-controlled with the codebase

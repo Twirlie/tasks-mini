@@ -22,7 +22,7 @@ UI defaults to dark mode. Add toggle to switch between dark and light modes. Per
 - [ ] Clean, minimalistic design throughout
 - [ ] Responsive layout adapts to window size
 - [ ] Smooth animations for: drag-drop operations, modal open/close, theme transition
-- [ ] Tests: theme toggle updates UI, preference persists across restarts
+- [ ] TDD cycles for theme toggle, persistence, defaults (see Agent Brief)
 
 ## Blocked by
 
@@ -62,4 +62,10 @@ UI defaults to dark mode. Add toggle to switch between dark and light modes. Per
 
 **Dependencies:** None new — uses existing TailwindCSS + Leptos
 
-**Tests:** Theme toggle updates DOM class, preference persists in localStorage, default is dark mode. Visual/manual testing for responsive layout and animations.
+**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
+1. `app defaults to dark mode on first launch` → dark class on html element → no refactor
+2. `theme toggle switches dark class on html element` → toggle button + class swap → extract theme signal
+3. `theme preference persists in localStorage` → localStorage read/write on toggle → no refactor
+4. `theme restored from localStorage on load` → load-time check → no refactor
+5. `modal open/close uses CSS transition` → transition on opacity + transform → no refactor
+6. `theme transition animates background and color` → CSS transition on theme change → no refactor

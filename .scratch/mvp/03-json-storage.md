@@ -22,8 +22,7 @@ Implement the `Storage` trait using JSON file persistence. Store data in `~/.loc
 - [ ] Auto-backup: `tasks.json.backup.<timestamp>` before every write
 - [ ] Keep last 5 backups, delete older ones
 - [ ] Handle corrupt files gracefully with error propagation
-- [ ] Integration tests using temp directories
-- [ ] Tests for: read/write roundtrip, backup creation/rotation, schema versioning, error handling
+- [ ] TDD cycles for integration tests using temp directories (see Agent Brief)
 
 ## Blocked by
 
@@ -47,6 +46,7 @@ Implement the `Storage` trait using JSON file persistence. Store data in `~/.loc
 
 **Implementation notes:**
 - Implement `Storage` trait from `crate::storage_port`
+- Import domain types from `crate::task::types`, `crate::column::types`, `crate::board::types`
 - Use `tokio::fs` for async file operations (Tauri uses tokio runtime)
 - Create data directory on init if it doesn't exist
 - Use `chrono::Utc::now().timestamp()` for backup timestamps
@@ -59,6 +59,12 @@ Implement the `Storage` trait using JSON file persistence. Store data in `~/.loc
 - `dirs = "6"`
 - `tokio = { version = "1", features = ["fs"] }`
 
-**Tests:** Integration tests using `tempfile::TempDir`. Test read/write roundtrip, backup creation and rotation, schema versioning, corrupt file error, default board creation on missing file.
+**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
+1. `save_board then load_board roundtrips Board data` → implement save_board + load_board with tokio::fs → no refactor
+2. `load_board returns default board when file missing` → default board creation on missing file → extract default_board() helper
+3. `save_board creates backup before write` → backup creation → no refactor
+4. `save_board rotates backups keeping last 5` → backup rotation → extract rotate_backups helper
+5. `load_board returns Serialization error on corrupt JSON` → corrupt file handling → no refactor
+6. `schema_version persisted and read back correctly` → schema versioning → no refactor
 
 **Test dependency:** `tempfile = "3"` (dev-dependency)

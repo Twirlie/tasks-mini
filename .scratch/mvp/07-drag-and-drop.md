@@ -22,8 +22,8 @@ Full drag-and-drop functionality: move tasks between columns to track workflow p
 - [ ] Drop updates task's `order` field and persists
 - [ ] Smooth animations during drag and drop
 - [ ] Visual feedback: drag preview, drop zones highlighted
-- [ ] Tests verify: task moves between columns, task reorders within column, persistence after drop
-- [ ] Edge case tests: drop on invalid area, concurrent modifications
+- [ ] TDD cycles for task moves between columns, reorder, persistence (see Agent Brief)
+- [ ] Edge cases: drop on invalid area, concurrent modifications
 
 ## Blocked by
 
@@ -62,4 +62,11 @@ Full drag-and-drop functionality: move tasks between columns to track workflow p
 
 **Dependencies:** None new — uses existing Leptos + Tauri invoke API
 
-**Tests:** Component-level tests where feasible. Verify: task moves between columns (order + column_id update), task reorders within column, persistence after drop. Most testing will be manual/visual for drag-drop.
+**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
+1. `drag start stores task id and source column in DataTransfer` → drag event handler → no refactor
+2. `drop on different column calls move_task with target column_id` → cross-column drop → extract invoke helper
+3. `drop within same column updates task order` → reorder drop → no refactor
+4. `drop on same position is a no-op` → same-position guard → no refactor
+5. `board state refreshes after successful drop` → post-drop refresh → no refactor
+6. `drop zone highlights on drag-over` → CSS drag-over class → no refactor
+7. `dragged card gets visual feedback` → CSS dragging class → no refactor

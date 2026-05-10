@@ -20,11 +20,13 @@ Define the `Storage` trait (port) that abstracts all persistence operations. Def
 - [ ] `StorageError` enum covering: IO errors, serialization errors, validation errors, not found
 - [ ] All operations return `Result<T, StorageError>`
 - [ ] Mock storage implementation for testing
-- [ ] Tests verifying mock storage contract compliance
+- [ ] TDD cycles for mock storage contract compliance (see Agent Brief)
 
 ## Blocked by
 
-- `.scratch/mvp/01-domain-types.md`
+- `.scratch/mvp/01c-column-types.md`
+- `.scratch/mvp/01d-task-types.md`
+- `.scratch/mvp/01b-board-module.md`
 
 ---
 
@@ -36,6 +38,11 @@ Define the `Storage` trait (port) that abstracts all persistence operations. Def
 
 **Trait to define:**
 ```rust
+// Types imported from entity modules:
+//   use crate::task::types::Task;
+//   use crate::column::types::Column;
+//   use crate::board::types::Board;
+
 trait Storage {
     async fn load_board(&self) -> Result<Board, StorageError>;
     async fn save_board(&self, board: &Board) -> Result<(), StorageError>;
@@ -53,14 +60,16 @@ trait Storage {
 enum StorageError {
     Io(std::io::Error),
     Serialization(serde_json::Error),
-    Validation(DomainError),
+    TaskValidation(TaskError),
+    ColumnValidation(ColumnError),
+    BoardValidation(BoardError),
     NotFound(String),
 }
 ```
 
 **Implementation notes:**
 - Use `thiserror` for `StorageError`
-- Import domain types from `crate::domain`
+- Import domain types from `crate::task::types`, `crate::column::types`, `crate::board::types`
 - Create `MockStorage` struct using `std::sync::Mutex<HashMap>` for in-memory testing
 - `MockStorage` implements `Storage` — all operations work on in-memory data
 - Make trait async-compatible (use `async_trait` or rely on Rust 1.75+ async traits in RPITIT position)
@@ -69,4 +78,10 @@ enum StorageError {
 **Dependencies to add:**
 - `async-trait = "0.1"` (if not using native async traits)
 
-**Tests:** Verify `MockStorage` contract compliance — create/read/update/delete roundtrips for tasks and columns, error cases for not-found.
+**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
+1. `StorageError variants carry correct source errors` → define StorageError enum with thiserror → no refactor
+2. `MockStorage create_task and load_board roundtrip` → implement create_task + load_board on MockStorage → no refactor
+3. `MockStorage update_task persists changes` → implement update_task → extract shared map lookup helper
+4. `MockStorage delete_task removes from board` → implement delete_task → no refactor
+5. `MockStorage column CRUD roundtrips` → implement create_column, update_column, delete_column → consider DRY with task ops
+6. `MockStorage returns NotFound for missing task/column` → error path → consolidate not-found logic

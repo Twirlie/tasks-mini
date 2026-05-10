@@ -23,7 +23,7 @@ Command pattern implementation for reversible column operations. Commands: `AddC
 - [ ] `undo()` - reverts last command, moves to redo stack
 - [ ] `redo()` - re-applies undone command
 - [ ] Persists board state after each operation
-- [ ] Unit tests: execute, undo single, redo, stack limits, complex undo/redo sequences
+- [ ] TDD cycles for execute, undo, redo, stack limits (see Agent Brief)
 
 ## Blocked by
 
@@ -35,7 +35,7 @@ Command pattern implementation for reversible column operations. Commands: `AddC
 
 ## Agent Brief
 
-**Goal:** Create the `undo_redo` module in `src-tauri/src/undo_redo/` implementing the command pattern for reversible column operations.
+**Goal:** Create the `undo_redo` module in `src-tauri/src/undo_redo/` implementing the command pattern for reversible column operations. Depends on `crate::column::service`.
 
 **Command trait:**
 ```rust
@@ -46,7 +46,7 @@ trait Command {
 ```
 
 **Commands to implement:**
-- `AddColumn { name: String }` — execute: add column via column_service; undo: delete that column
+- `AddColumn { name: String }` — execute: add column via `column::service::add_column`; undo: delete that column
 - `RenameColumn { column_id: String, old_name: String, new_name: String }` — execute: rename; undo: rename back to old_name
 - `DeleteColumn { column_id: String, column_name: String, column_order: u32, relocated_tasks: Vec<Task> }` — execute: delete column (capture tasks before deletion for undo); undo: re-add column and move tasks back
 
@@ -67,16 +67,25 @@ struct History {
 ```rust
 enum UndoRedoError {
     Storage(StorageError),
-    Column(ColumnError),
+    ColumnService(ColumnError),  // from crate::column::service
     NothingToUndo,
     NothingToRedo,
 }
 ```
 
 **Implementation notes:**
-- Depends on `crate::column_service` and `crate::storage_port`
+- Depends on `crate::column::service` and `crate::storage_port`
 - `DeleteColumn` must capture task data before executing so undo can restore them
-- Does NOT contain task-movement logic — delegates to `column_service`
+- Does NOT contain task-movement logic — delegates to `crate::column::service`
 - Persist board state after each execute/undo/redo via storage
 
-**Tests:** Execute command, undo single, redo, stack depth limits, complex undo/redo sequences, nothing to undo/redo errors.
+**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
+1. `History::execute runs command and pushes to undo_stack` → Command trait + History struct + execute → no refactor
+2. `History::undo pops and calls cmd.undo()` → undo + redo_stack push → no refactor
+3. `History::redo re-applies undone command` → redo logic → no refactor
+4. `History::undo returns NothingToUndo when stack empty` → error path → no refactor
+5. `History::execute clears redo_stack` → redo invalidation → no refactor
+6. `History enforces max_depth and trims oldest` → depth limit → extract trim logic
+7. `AddColumn execute adds, undo deletes` → AddColumn command → no refactor
+8. `RenameColumn execute renames, undo reverts` → RenameColumn command → no refactor
+9. `DeleteColumn execute deletes, undo restores column and tasks` → DeleteColumn command → extract task capture
