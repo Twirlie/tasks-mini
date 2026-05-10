@@ -1,6 +1,7 @@
 pub mod board;
 pub mod column;
 pub mod domain;
+pub mod json_storage;
 pub mod storage_port;
 pub mod task;
 
