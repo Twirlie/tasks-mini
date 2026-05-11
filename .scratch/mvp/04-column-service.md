@@ -1,9 +1,9 @@
 ---
 title: "Column service with task relocation"
-status: "ready-for-agent"
+status: "complete"
 created: "2026-05-10T07:25:00Z"
 updated: "2026-05-10T07:28:00Z"
-labels: ["mvp", "enhancement", "ready-for-agent", "module:column-service"]
+labels: ["mvp", "enhancement", "complete", "module:column-service"]
 ---
 
 ## Parent
@@ -16,12 +16,12 @@ Service layer for column operations: add, rename, delete. On column delete, auto
 
 ## Acceptance criteria
 
-- [ ] `add_column(name)` - creates column with unique name
-- [ ] `rename_column(id, name)` - updates name, validates uniqueness
-- [ ] `delete_column(id)` - deletes column, moves tasks to first column
-- [ ] Validation: column names unique per board, max 50 chars
-- [ ] On delete: all tasks in deleted column get `column_id` set to first column id
-- [ ] TDD cycles for unit tests with mocked storage (see Agent Brief)
+- [x] `add_column(name)` - creates column with unique name
+- [x] `rename_column(id, name)` - updates name, validates uniqueness
+- [x] `delete_column(id)` - deletes column, moves tasks to first column
+- [x] Validation: column names unique per board, max 50 chars
+- [x] On delete: all tasks in deleted column get `column_id` set to first column id
+- [x] TDD cycles for unit tests with mocked storage (see Agent Brief)
 
 ## Blocked by
 

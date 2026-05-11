@@ -24,7 +24,7 @@ pub enum StorageError {
 }
 
 #[async_trait::async_trait]
-pub trait Storage {
+pub trait Storage: Send + Sync {
     async fn load_board(&self) -> Result<Board, StorageError>;
     async fn save_board(&self, board: &Board) -> Result<(), StorageError>;
     async fn create_task(&self, task: &Task) -> Result<Task, StorageError>;
@@ -58,36 +58,49 @@ impl Storage for MockStorage {
     }
 
     async fn create_task(&self, task: &Task) -> Result<Task, StorageError> {
-        let mut tasks_guard = self.tasks.lock().unwrap();
+        let mut board_guard = self.board.lock().unwrap();
+        let board = board_guard
+            .as_mut()
+            .ok_or_else(|| StorageError::NotFound("Board not found".to_string()))?;
+
         let created_task = Task::new(
             task.title.clone(),
             task.description.clone(),
             task.column_id.clone(),
             task.order,
         )?;
-        tasks_guard.insert(created_task.id.clone(), created_task.clone());
+        board.tasks.push(created_task.clone());
         Ok(created_task)
     }
 
     async fn update_task(&self, task: &Task) -> Result<Task, StorageError> {
-        let mut tasks_guard = self.tasks.lock().unwrap();
-        if !tasks_guard.contains_key(&task.id) {
-            return Err(StorageError::NotFound(format!(
-                "Task {} not found",
-                task.id
-            )));
-        }
-        let updated_task = task.clone();
-        tasks_guard.insert(task.id.clone(), updated_task.clone());
-        Ok(updated_task)
+        let mut board_guard = self.board.lock().unwrap();
+        let board = board_guard
+            .as_mut()
+            .ok_or_else(|| StorageError::NotFound("Board not found".to_string()))?;
+
+        let task_index = board
+            .tasks
+            .iter()
+            .position(|t| t.id == task.id)
+            .ok_or_else(|| StorageError::NotFound(format!("Task {} not found", task.id)))?;
+
+        board.tasks[task_index] = task.clone();
+        Ok(task.clone())
     }
 
     async fn delete_task(&self, id: &str) -> Result<(), StorageError> {
-        let mut tasks_guard = self.tasks.lock().unwrap();
-        match tasks_guard.remove(id) {
-            Some(_) => Ok(()),
-            None => Err(StorageError::NotFound(format!("Task {} not found", id))),
+        let mut board_guard = self.board.lock().unwrap();
+        let board = board_guard
+            .as_mut()
+            .ok_or_else(|| StorageError::NotFound("Board not found".to_string()))?;
+
+        let initial_len = board.tasks.len();
+        board.tasks.retain(|t| t.id != id);
+        if board.tasks.len() == initial_len {
+            return Err(StorageError::NotFound(format!("Task {} not found", id)));
         }
+        Ok(())
     }
 
     async fn create_column(&self, column: &Column) -> Result<Column, StorageError> {

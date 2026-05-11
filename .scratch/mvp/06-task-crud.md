@@ -1,9 +1,9 @@
 ---
 title: "Task CRUD with persistence"
-status: "ready-for-agent"
+status: "complete"
 created: "2026-05-10T07:25:00Z"
 updated: "2026-05-10T07:28:00Z"
-labels: ["mvp", "enhancement", "ready-for-agent", "module:task-crud"]
+labels: ["mvp", "enhancement", "complete", "module:task-crud"]
 ---
 
 ## Parent

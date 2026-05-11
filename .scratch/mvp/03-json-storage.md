@@ -1,9 +1,9 @@
 ---
 title: "JSON file storage adapter"
-status: "ready-for-agent"
+status: "completed"
 created: "2026-05-10T07:25:00Z"
-updated: "2026-05-10T07:28:00Z"
-labels: ["mvp", "enhancement", "ready-for-agent", "module:json-storage"]
+updated: "2026-05-11T15:20:00Z"
+labels: ["mvp", "enhancement", "completed", "module:json-storage"]
 ---
 
 ## Parent
@@ -73,30 +73,33 @@ Implement the `Storage` trait using JSON file persistence. Store data in `~/.loc
 
 ## Implementation Progress
 
-**Status:** Work in Progress (WIP) - Can be continued later
+**Status:** ✅ Complete
 
 **Completed TDD Cycles:**
 - ✅ Cycle 1: save_board then load_board roundtrips Board data
-- ✅ Cycle 2: load_board returns default board when file missing  
+- ✅ Cycle 2: load_board returns default board when file missing
 - ✅ Cycle 3: save_board creates backup before write
-- 🔄 Cycle 4: save_board rotates backups keeping last 5 (IN PROGRESS)
+- ✅ Cycle 4: save_board rotates backups keeping last 5
+- ✅ Cycle 5: load_board returns Serialization error on corrupt JSON
+- ✅ Cycle 6: schema_version persisted and read back correctly
 
-**Current Issue:**
-TDD Cycle 4 test is failing - backup rotation logic needs debugging. Only 1 backup file is being created instead of expected 5. The rotation logic is deleting older backups immediately after each save instead of keeping the last 5.
-
-**Next Steps:**
-1. Fix backup rotation logic in `rotate_backups()` method
-2. Complete TDD Cycles 5-6:
-   - Cycle 5: load_board returns Serialization error on corrupt JSON
-   - Cycle 6: schema_version persisted and read back correctly
-3. Implement remaining Storage trait methods (create_task, update_task, delete_task, etc.)
-4. Integration testing with temp directories
+**Completed Storage Trait Methods:**
+- ✅ create_task
+- ✅ update_task
+- ✅ delete_task
+- ✅ create_column
+- ✅ update_column
+- ✅ delete_column
 
 **Files Modified:**
 - `src-tauri/Cargo.toml` - Added dirs, tempfile dependencies
-- `src-tauri/src/json_storage/mod.rs` - Core implementation in progress
+- `src-tauri/src/json_storage/mod.rs` - Full implementation with all Storage trait methods
 - `src-tauri/src/lib.rs` - Added json_storage module
+- `src-tauri/src/board/types.rs` - Added tasks field to Board struct
 
 **Dependencies Added:**
 - `dirs = "6"`
 - `tempfile = "3"` (dev-dependency)
+
+**Test Results:**
+All 53 tests passing, including 12 json_storage integration tests using temp directories.

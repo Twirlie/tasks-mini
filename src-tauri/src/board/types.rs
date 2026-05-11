@@ -16,6 +16,7 @@ pub struct Board {
     pub id: String,
     pub name: String,
     pub columns: Vec<crate::column::types::Column>,
+    pub tasks: Vec<crate::task::types::Task>,
     pub schema_version: u32,
 }
 
@@ -33,6 +34,7 @@ impl Board {
             id: uuid::Uuid::new_v4().to_string(),
             name,
             columns,
+            tasks: Vec::new(),
             schema_version: 1,
         };
         board.validate()?;
@@ -103,6 +105,7 @@ mod tests {
             id: "test".to_string(),
             name: "Test".to_string(),
             columns: vec![col1, col2],
+            tasks: Vec::new(),
             schema_version: 1,
         };
         let result = board.validate();

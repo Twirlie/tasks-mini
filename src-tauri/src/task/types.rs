@@ -11,6 +11,14 @@ pub enum TaskError {
     Validation(String),
     #[error("Entity not found: {0}")]
     NotFound(String),
+    #[error("Storage error: {0}")]
+    Storage(#[from] Box<crate::storage_port::StorageError>),
+    #[error("Board error: {0}")]
+    Board(#[from] crate::board::types::BoardError),
+    #[error("Task not found: {0}")]
+    TaskNotFound(String),
+    #[error("Column not found: {0}")]
+    ColumnNotFound(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

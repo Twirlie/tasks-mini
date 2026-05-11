@@ -1,9 +1,9 @@
 ---
 title: "Undo/redo for column operations"
-status: "ready-for-agent"
+status: "complete"
 created: "2026-05-10T07:25:00Z"
 updated: "2026-05-10T07:28:00Z"
-labels: ["mvp", "enhancement", "ready-for-agent", "module:undo-redo"]
+labels: ["mvp", "enhancement", "complete", "module:undo-redo"]
 ---
 
 ## Parent
@@ -16,14 +16,14 @@ Command pattern implementation for reversible column operations. Commands: `AddC
 
 ## Acceptance criteria
 
-- [ ] Command trait with `execute()` and `undo()` methods
-- [ ] Commands: AddColumn, RenameColumn, DeleteColumn
-- [ ] History stack with configurable max depth
-- [ ] `execute(cmd)` - runs command, adds to history
-- [ ] `undo()` - reverts last command, moves to redo stack
-- [ ] `redo()` - re-applies undone command
-- [ ] Persists board state after each operation
-- [ ] TDD cycles for execute, undo, redo, stack limits (see Agent Brief)
+- [x] Command trait with `execute()` and `undo()` methods
+- [x] Commands: AddColumn, RenameColumn, DeleteColumn
+- [x] History stack with configurable max depth
+- [x] `execute(cmd)` - runs command, adds to history
+- [x] `undo()` - reverts last command, moves to redo stack
+- [x] `redo()` - re-applies undone command
+- [x] Persists board state after each operation
+- [x] TDD cycles for execute, undo, redo, stack limits (see Agent Brief)
 
 ## Blocked by
 
