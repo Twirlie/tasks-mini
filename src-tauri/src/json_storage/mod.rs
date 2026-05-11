@@ -22,8 +22,10 @@ impl Storage for JsonStorage {
                 Ok(board)
             }
             Err(_) => {
-                // File doesn't exist, return default board
-                Ok(self.default_board())
+                // File doesn't exist, create and save default board
+                let default_board = self.default_board();
+                self.save_board(&default_board).await?;
+                Ok(default_board)
             }
         }
     }

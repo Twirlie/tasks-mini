@@ -76,11 +76,26 @@ async fn move_task(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let storage = JsonStorage::new(PathBuf::from("tasks.json"));
+    // Use a temp directory in debug mode to avoid dev server reloads
+    let app_data_dir = if cfg!(debug_assertions) {
+        std::env::temp_dir().join("tasks-mini-dev")
+    } else {
+        dirs::data_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("tasks-mini")
+    };
+    let storage = JsonStorage::new(app_data_dir);
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(Mutex::new(storage))
+        .manage(Mutex::new(storage));
+
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![
             greet,
             get_board,

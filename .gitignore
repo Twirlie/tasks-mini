@@ -2,3 +2,5 @@
 /target/
 /Cargo.lock
 /node_modules
+/tasks.json
+/src-tauri/tasks.json

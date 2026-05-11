@@ -30,3 +30,8 @@ Agents MUST NOT:
 - Write multiple tests before making each one pass (horizontal slicing)
 - Skip the refactor step after a cycle completes
 - Treat "Tests" as a final checklist item instead of the driving force
+
+### Tauri Dev Server usage
+
+Assume Tauri Dev Server is already running, DO NOT start your own. If you find it is not running, ask the user to start it. If you need to test changes, use the existing server. Tauri MCP can be used to view and interact with the frontend.
+
