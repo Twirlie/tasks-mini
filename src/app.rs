@@ -1,12 +1,186 @@
 use leptos::task::spawn_local;
 use leptos::{ev::SubmitEvent, prelude::*};
 use serde::{Deserialize, Serialize};
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
+use web_sys::DragEvent;
 
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
     async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+}
+
+#[derive(Serialize, Deserialize)]
+struct MoveTaskArgs {
+    id: String,
+    columnId: String,
+    order: u32,
+}
+
+/// Stores task id, source column id, and original order in DataTransfer on drag start
+pub fn on_drag_start(task_id: String, column_id: String, order: u32, ev: DragEvent) {
+    if let Some(dt) = ev.data_transfer() {
+        let _ = dt.set_data(
+            "text/plain",
+            &format!("{}|{}|{}", task_id, column_id, order),
+        );
+    }
+}
+
+/// Handles drop event - calls move_task Tauri command and refresh callback
+pub async fn on_drop(
+    target_column_id: String,
+    new_order: u32,
+    ev: DragEvent,
+    on_refresh: Rc<dyn Fn()>,
+) -> Result<(), String> {
+    let dt = ev.data_transfer().ok_or("No data transfer")?;
+
+    let data = dt
+        .get_data("text/plain")
+        .map_err(|e| format!("Failed to get data: {:?}", e))?;
+    let parts: Vec<&str> = data.split('|').collect();
+    if parts.len() != 3 {
+        return Err("Invalid data format".to_string());
+    }
+
+    let task_id = parts[0].to_string();
+    let source_column_id = parts[1].to_string();
+    let original_order: u32 = parts[2].parse().map_err(|_| "Invalid order".to_string())?;
+
+    // If dropping on same column with same order, no-op
+    if source_column_id == target_column_id && original_order == new_order {
+        return Ok(());
+    }
+
+    let args = serde_wasm_bindgen::to_value(&MoveTaskArgs {
+        id: task_id,
+        columnId: target_column_id,
+        order: new_order,
+    })
+    .map_err(|e| format!("Failed to serialize args: {:?}", e))?;
+
+    invoke("move_task", args).await;
+    on_refresh();
+    Ok(())
+}
+
+/// Simplified version that works with extracted data instead of DragEvent
+async fn move_task_with_data(
+    target_column_id: String,
+    new_order: u32,
+    data: &str,
+    on_refresh: Rc<dyn Fn()>,
+) -> Result<(), String> {
+    let parts: Vec<&str> = data.split('|').collect();
+    if parts.len() != 3 {
+        return Err("Invalid data format".to_string());
+    }
+
+    let task_id = parts[0].to_string();
+    let source_column_id = parts[1].to_string();
+    let original_order: u32 = parts[2].parse().map_err(|_| "Invalid order".to_string())?;
+
+    // If dropping on same column with same order, no-op
+    if source_column_id == target_column_id && original_order == new_order {
+        return Ok(());
+    }
+
+    let args = serde_wasm_bindgen::to_value(&MoveTaskArgs {
+        id: task_id,
+        columnId: target_column_id,
+        order: new_order,
+    })
+    .map_err(|e| format!("Failed to serialize args: {:?}", e))?;
+
+    invoke("move_task", args).await;
+    on_refresh();
+    Ok(())
+}
+
+#[component]
+pub fn DraggableTask(
+    task_id: String,
+    column_id: String,
+    order: u32,
+    children: Children,
+) -> impl IntoView {
+    let (is_dragging, set_is_dragging) = signal(false);
+
+    view! {
+        <div
+            class={move || if is_dragging.get() { "dragging" } else { "" }}
+            draggable="true"
+            on:dragstart=move |ev: DragEvent| {
+                set_is_dragging.set(true);
+                on_drag_start(task_id.clone(), column_id.clone(), order, ev)
+            }
+            on:dragend=move |_| set_is_dragging.set(false)
+        >
+            {children()}
+        </div>
+    }
+}
+
+#[component]
+pub fn DropZone(
+    column_id: String,
+    order: u32,
+    on_refresh: Rc<dyn Fn()>,
+    children: Children,
+) -> impl IntoView {
+    let column_id_clone = column_id.clone();
+    let (is_drag_over, set_is_drag_over) = signal(false);
+
+    view! {
+        <div
+            class={move || if is_drag_over.get() { "drag-over" } else { "" }}
+            on:drop=move |ev: DragEvent| {
+                ev.prevent_default();
+                set_is_drag_over.set(false);
+                let col_id = column_id_clone.clone();
+                let refresh = on_refresh.clone();
+
+                // Extract data transfer data before async
+                let dt = match ev.data_transfer() {
+                    Some(dt) => dt,
+                    None => {
+                        web_sys::console::log_1(&"No data transfer".into());
+                        return;
+                    }
+                };
+
+                let data = match dt.get_data("text/plain") {
+                    Ok(data) => data,
+                    Err(e) => {
+                        web_sys::console::log_1(&format!("Failed to get data: {:?}", e).into());
+                        return;
+                    }
+                };
+
+                // Spawn async task with the extracted data
+                leptos::task::spawn_local(async move {
+                    // Call a simplified version that works with the extracted data
+                    match move_task_with_data(col_id, order, &data, refresh).await {
+                        Ok(_) => {
+                            // Success - refresh is already called in move_task_with_data
+                        }
+                        Err(e) => {
+                            web_sys::console::log_1(&format!("Drop error: {}", e).into());
+                        }
+                    }
+                });
+            }
+            on:dragover=move |ev: DragEvent| {
+                ev.prevent_default();
+                set_is_drag_over.set(true);
+            }
+            on:dragleave=move |_| set_is_drag_over.set(false)
+        >
+            {children()}
+        </div>
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -108,6 +282,20 @@ fn ColumnView(
     let (new_task_title, set_new_task_title) = signal(String::new());
     let (new_task_desc, set_new_task_desc) = signal(String::new());
 
+    let refresh_board = {
+        let set_board = set_board.clone();
+        Rc::new(move || {
+            let set_board = set_board.clone();
+            spawn_local(async move {
+                let result = invoke("get_board", JsValue::NULL).await;
+                match serde_wasm_bindgen::from_value::<Board>(result) {
+                    Ok(b) => set_board.set(Some(b)),
+                    Err(_) => {}
+                }
+            });
+        })
+    };
+
     let add_task = {
         let set_show_add_task = set_show_add_task.clone();
         let set_new_task_title = set_new_task_title.clone();
@@ -160,35 +348,24 @@ fn ColumnView(
         }
     };
 
-    let delete_task = {
-        let set_board = set_board.clone();
-        move |task_id: String| {
-            spawn_local(async move {
-                let args =
-                    serde_wasm_bindgen::to_value(&serde_json::json!({ "id": task_id })).unwrap();
-                let _ = invoke("delete_task", args).await;
-                set_board.update(|board| {
-                    if let Some(b) = board {
-                        b.tasks.retain(|t| t.id != task_id);
-                    }
-                });
-            });
-        }
-    };
-
     view! {
         <div class="flex-shrink-0 w-80 bg-gray-200 rounded-lg p-4">
             <h2 class="text-xl font-semibold text-gray-700 mb-4">{column.name}</h2>
 
             <div class="space-y-3 mb-4">
-                {tasks.into_iter().map(|task| {
-                    let task_id = task.id.clone();
-                    let delete_task = delete_task.clone();
+                {tasks.into_iter().enumerate().map(|(index, task)| {
+                    let column_id = column.id.clone();
+                    let refresh_board = refresh_board.clone();
                     view! {
-                        <TaskCard
-                            task=task
-                            on_delete=move || delete_task(task_id.clone())
-                        />
+                        <DropZone
+                            column_id=column_id.clone()
+                            order=index as u32
+                            on_refresh=refresh_board.clone()
+                        >
+                            <TaskCard
+                                task=task
+                            />
+                        </DropZone>
                     }
                 }).collect::<Vec<_>>()}
             </div>
@@ -241,25 +418,41 @@ fn ColumnView(
 }
 
 #[component]
-fn TaskCard(task: Task, on_delete: impl Fn() + 'static) -> impl IntoView {
+fn TaskCard(task: Task) -> impl IntoView {
+    let task_id_for_delete = task.id.clone();
     view! {
-        <div class="bg-white p-3 rounded shadow hover:shadow-md transition-shadow">
-            <h3 class="font-medium text-gray-800">{task.title}</h3>
-            {move || {
-                if let Some(desc) = task.description.clone() {
-                    view! { <p class="text-sm text-gray-600 mt-1">{desc}</p> }.into_any()
-                } else {
-                    view! { }.into_any()
-                }
-            }}
-            <div class="flex justify-end gap-2 mt-2">
-                <button
-                    class="text-sm text-red-500 hover:text-red-700"
-                    on:click=move |_| on_delete()
-                >
-                    "Delete"
-                </button>
+        <DraggableTask
+            task_id=task.id.clone()
+            column_id=task.column_id.clone()
+            order=task.order
+        >
+            <div class="bg-white p-3 rounded shadow hover:shadow-md transition-shadow cursor-move">
+                <h3 class="font-medium text-gray-800">{task.title}</h3>
+                {move || {
+                    if let Some(desc) = task.description.clone() {
+                        view! { <p class="text-sm text-gray-600 mt-1">{desc}</p> }.into_any()
+                    } else {
+                        view! { }.into_any()
+                    }
+                }}
+                <div class="flex justify-end gap-2 mt-2">
+                    <button
+                        class="text-sm text-red-500 hover:text-red-700"
+                        on:click=move |_| {
+                            let task_id = task_id_for_delete.clone();
+                            spawn_local(async move {
+                                let args = serde_wasm_bindgen::to_value(&serde_json::json!({ "id": task_id })).unwrap();
+                                let _ = invoke("delete_task", args).await;
+                                // Refresh board after deletion
+                                let result = invoke("get_board", JsValue::NULL).await;
+                                let _ = serde_wasm_bindgen::from_value::<Board>(result);
+                            });
+                        }
+                    >
+                        "Delete"
+                    </button>
+                </div>
             </div>
-        </div>
+        </DraggableTask>
     }
 }
