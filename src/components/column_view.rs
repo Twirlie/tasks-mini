@@ -116,6 +116,7 @@ pub fn ColumnView(
                                 >
                                     <TaskCard
                                         task=task
+                                        set_board
                                     />
                                 </DropZone>
                             }

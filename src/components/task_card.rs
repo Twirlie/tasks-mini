@@ -1,7 +1,7 @@
 use crate::domain::{Board, Task};
 use crate::utils::DraggableTask;
-use leptos::task::spawn_local;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -11,7 +11,7 @@ extern "C" {
 }
 
 #[component]
-pub fn TaskCard(task: Task) -> impl IntoView {
+pub fn TaskCard(task: Task, set_board: WriteSignal<Option<Board>>) -> impl IntoView {
     let task_id_for_delete = task.id.clone();
     view! {
         <DraggableTask
@@ -33,12 +33,20 @@ pub fn TaskCard(task: Task) -> impl IntoView {
                         class="text-sm text-red-500 hover:text-red-700"
                         on:click=move |_| {
                             let task_id = task_id_for_delete.clone();
+                            let set_board = set_board.clone();
                             spawn_local(async move {
                                 let args = serde_wasm_bindgen::to_value(&serde_json::json!({ "id": task_id })).unwrap();
                                 let _ = invoke("delete_task", args).await;
                                 // Refresh board after deletion
                                 let result = invoke("get_board", JsValue::NULL).await;
-                                let _ = serde_wasm_bindgen::from_value::<Board>(result);
+                                match serde_wasm_bindgen::from_value::<Board>(result) {
+                                    Ok(board) => {
+                                        set_board.set(Some(board));
+                                    }
+                                    Err(e) => {
+                                        web_sys::console::log_1(&format!("Failed to update board after deletion: {:?}", e).into());
+                                    }
+                                }
                             });
                         }
                     >
@@ -113,8 +121,8 @@ mod tests {
 
         // Verify the task has an ID for deletion
         assert_eq!(task.id, "test-task-id");
-        
-        // The delete button should call invoke("delete_task", {id: task_id}) 
+
+        // The delete button should call invoke("delete_task", {id: task_id})
         // and then refresh the board by calling invoke("get_board")
         // This is verified in the component implementation
         assert!(true);
