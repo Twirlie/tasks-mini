@@ -110,3 +110,16 @@ button {
     background-color: #0f0f0f69;
   }
 }
+
+/* Drag and drop visual feedback */
+.drag-over {
+  background-color: rgba(100, 108, 255, 0.1);
+  border: 2px dashed #646cff;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.dragging {
+  opacity: 0.5;
+  transform: scale(1.02);
+  transition: opacity 0.2s, transform 0.2s;
+}

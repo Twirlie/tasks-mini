@@ -1,6 +1,8 @@
 mod app;
+mod drag_drop;
 
 use app::*;
+use drag_drop::*;
 use leptos::prelude::*;
 
 fn main() {
