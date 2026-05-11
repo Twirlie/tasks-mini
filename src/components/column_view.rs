@@ -25,12 +25,21 @@ pub fn ColumnView(
     let refresh_board = {
         let set_board = set_board.clone();
         Rc::new(move || {
+            web_sys::console::log_1(&"refresh_board called".into());
             let set_board = set_board.clone();
             spawn_local(async move {
+                web_sys::console::log_1(&"Fetching board data...".into());
                 let result = invoke("get_board", JsValue::NULL).await;
                 match serde_wasm_bindgen::from_value::<Board>(result) {
-                    Ok(b) => set_board.set(Some(b)),
-                    Err(_) => {}
+                    Ok(b) => {
+                        web_sys::console::log_1(
+                            &format!("Board updated with {} tasks", b.tasks.len()).into(),
+                        );
+                        set_board.set(Some(b));
+                    }
+                    Err(e) => {
+                        web_sys::console::log_1(&format!("Failed to update board: {:?}", e).into());
+                    }
                 }
             });
         })
@@ -92,23 +101,37 @@ pub fn ColumnView(
         <div class="flex-shrink-0 w-80 bg-gray-200 rounded-lg p-4">
             <h2 class="text-xl font-semibold text-gray-700 mb-4">{column.name}</h2>
 
-            <div class="space-y-3 mb-4">
-                {tasks.into_iter().enumerate().map(|(index, task)| {
-                    let column_id = column.id.clone();
-                    let refresh_board = refresh_board.clone();
-                    view! {
-                        <DropZone
-                            column_id=column_id.clone()
-                            order=index as u32
-                            on_refresh=refresh_board.clone()
-                        >
-                            <TaskCard
-                                task=task
-                            />
-                        </DropZone>
-                    }
-                }).collect::<Vec<_>>()}
-            </div>
+            {
+                let tasks_len = tasks.len();
+                view! {
+                    <div class="space-y-3 mb-4">
+                        {tasks.into_iter().enumerate().map(|(index, task)| {
+                            let column_id = column.id.clone();
+                            let refresh_board = refresh_board.clone();
+                            view! {
+                                <DropZone
+                                    column_id=column_id.clone()
+                                    order=index as u32
+                                    on_refresh=refresh_board.clone()
+                                >
+                                    <TaskCard
+                                        task=task
+                                    />
+                                </DropZone>
+                            }
+                        }).collect::<Vec<_>>()}
+                    </div>
+
+                    // Add a DropZone at the bottom for dropping tasks after the last one
+                    <DropZone
+                        column_id=column.id.clone()
+                        order=tasks_len as u32
+                        on_refresh=refresh_board.clone()
+                    >
+                        <div class="w-full h-8 border-2 border-dashed border-gray-300 rounded opacity-50 hover:opacity-100"></div>
+                    </DropZone>
+                }
+            }
 
             {move || if show_add_task.get() {
                 let add_task = add_task.clone();

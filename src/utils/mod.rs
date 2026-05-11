@@ -1,3 +1,4 @@
+use crate::domain::Task;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
@@ -20,11 +21,13 @@ pub struct MoveTaskArgs {
 
 /// Stores task id, source column id, and original order in DataTransfer on drag start
 pub fn on_drag_start(task_id: String, column_id: String, order: u32, ev: DragEvent) {
+    let data = format!("{}|{}|{}", task_id, column_id, order);
+    web_sys::console::log_1(&format!("Drag start data: {}", data).into());
     if let Some(dt) = ev.data_transfer() {
-        let _ = dt.set_data(
-            "text/plain",
-            &format!("{}|{}|{}", task_id, column_id, order),
-        );
+        let _ = dt.set_data("text/plain", &data);
+        web_sys::console::log_1(&"Drag data set successfully".into());
+    } else {
+        web_sys::console::log_1(&"No data transfer available".into());
     }
 }
 
@@ -49,16 +52,75 @@ pub async fn move_task_with_data(
         return Ok(());
     }
 
+    web_sys::console::log_1(
+        &format!(
+            "Calling move_task with args: task_id={}, column_id={}, order={}",
+            task_id, target_column_id, new_order
+        )
+        .into(),
+    );
     let args = serde_wasm_bindgen::to_value(&MoveTaskArgs {
-        id: task_id,
+        id: task_id.clone(),
         column_id: target_column_id.clone(),
         order: new_order,
     })
     .map_err(|e| format!("Failed to serialize args: {:?}", e))?;
 
-    invoke("move_task", args).await;
-    on_refresh();
-    Ok(())
+    let result = invoke("move_task", args).await;
+    web_sys::console::log_1(&"move_task backend call completed".into());
+
+    // Debug: Log the raw result to see what we're getting
+    web_sys::console::log_1(&format!("Raw backend result: {:?}", result).into());
+
+    match serde_wasm_bindgen::from_value::<Result<Task, String>>(result.clone()) {
+        Ok(Ok(moved_task)) => {
+            web_sys::console::log_1(
+                &format!(
+                    "move_task succeeded, task moved to column: {}",
+                    moved_task.column_id
+                )
+                .into(),
+            );
+            on_refresh();
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            web_sys::console::log_1(&format!("Backend move_task failed: {}", e).into());
+            Err(format!("Backend error: {}", e))
+        }
+        Err(e) => {
+            web_sys::console::log_1(
+                &format!("Failed to deserialize move_task result: {:?}", e).into(),
+            );
+
+            // Try alternative deserialization approaches
+            web_sys::console::log_1(&"Trying alternative deserialization...".into());
+
+            // Try to deserialize as just Task (in case backend doesn't wrap in Result)
+            if let Ok(task) = serde_wasm_bindgen::from_value::<Task>(result.clone()) {
+                web_sys::console::log_1(
+                    &format!("Successfully deserialized as Task: {}", task.id).into(),
+                );
+                on_refresh();
+                Ok(())
+            } else if let Ok(board) =
+                serde_wasm_bindgen::from_value::<crate::domain::Board>(result.clone())
+            {
+                web_sys::console::log_1(
+                    &format!(
+                        "Backend returned Board instead of Task/Result: {} tasks",
+                        board.tasks.len()
+                    )
+                    .into(),
+                );
+                on_refresh();
+                Ok(())
+            } else {
+                web_sys::console::log_1(&"All deserialization attempts failed".into());
+                Err(format!("Deserialization error: {:?}", e))
+            }
+        }
+    }
 }
 
 #[component]
@@ -114,7 +176,10 @@ pub fn DropZone(
                 };
 
                 let data = match dt.get_data("text/plain") {
-                    Ok(data) => data,
+                    Ok(data) => {
+                        web_sys::console::log_1(&format!("Drop received data: {}", data).into());
+                        data
+                    },
                     Err(e) => {
                         web_sys::console::log_1(&format!("Failed to get data: {:?}", e).into());
                         return;
@@ -123,7 +188,6 @@ pub fn DropZone(
 
                 // Spawn async task with the extracted data
                 leptos::task::spawn_local(async move {
-                    // Call a simplified version that works with the extracted data
                     match move_task_with_data(col_id, order, &data, refresh).await {
                         Ok(_) => {
                             // Success - refresh is already called in move_task_with_data
