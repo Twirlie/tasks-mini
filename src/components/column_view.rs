@@ -98,8 +98,8 @@ pub fn ColumnView(
     };
 
     view! {
-        <div class="flex-shrink-0 w-80 bg-gray-200 rounded-lg p-4">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">{column.name}</h2>
+        <div class="flex-shrink-0 w-80 bg-gray-800 dark:bg-gray-200 rounded-lg p-4 transition-colors duration-300 ease-in-out">
+            <h2 class="text-xl font-semibold text-gray-100 dark:text-gray-700 mb-4 transition-colors duration-300 ease-in-out">{column.name}</h2>
 
             {
                 let tasks_len = tasks.len();
@@ -129,7 +129,7 @@ pub fn ColumnView(
                         order=tasks_len as u32
                         on_refresh=refresh_board.clone()
                     >
-                        <div class="w-full h-8 border-2 border-dashed border-gray-300 rounded opacity-50 hover:opacity-100"></div>
+                        <div class="w-full h-8 border-2 border-dashed border-gray-600 dark:border-gray-300 rounded opacity-50 hover:opacity-100 transition-colors duration-300 ease-in-out"></div>
                     </DropZone>
                 }
             }
@@ -141,25 +141,25 @@ pub fn ColumnView(
                         <input
                             type="text"
                             placeholder="Task title"
-                            class="w-full p-2 rounded border"
+                            class="w-full p-2 rounded border bg-gray-700 dark:bg-white text-gray-100 dark:text-gray-800 border-gray-600 dark:border-gray-300 transition-colors duration-300 ease-in-out"
                             on:input=move |ev| set_new_task_title.set(event_target_value(&ev))
                             prop:value=new_task_title
                         />
                         <textarea
                             placeholder="Description (optional)"
-                            class="w-full p-2 rounded border"
+                            class="w-full p-2 rounded border bg-gray-700 dark:bg-white text-gray-100 dark:text-gray-800 border-gray-600 dark:border-gray-300 transition-colors duration-300 ease-in-out"
                             on:input=move |ev| set_new_task_desc.set(event_target_value(&ev))
                             rows="2"
                         >
                             {new_task_desc.get()}
                         </textarea>
                         <div class="flex gap-2">
-                            <button type="submit" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            <button type="submit" class="px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-300 ease-in-out">
                                 "Add"
                             </button>
                             <button
                                 type="button"
-                                class="px-3 py-1 bg-gray-400 text-white rounded hover:bg-gray-500"
+                                class="px-3 py-1 bg-gray-600 dark:bg-gray-400 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-500 transition-colors duration-300 ease-in-out"
                                 on:click=move |_| set_show_add_task.set(false)
                             >
                                 "Cancel"
@@ -170,7 +170,7 @@ pub fn ColumnView(
             } else {
                 view! {
                     <button
-                        class="w-full p-2 border-2 border-dashed border-gray-400 rounded text-gray-500 hover:bg-gray-300"
+                        class="w-full p-2 border-2 border-dashed border-gray-600 dark:border-gray-400 rounded text-gray-400 dark:text-gray-500 hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors duration-300 ease-in-out"
                         on:click=move |_| set_show_add_task.set(true)
                     >
                         "+ Add Task"

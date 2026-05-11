@@ -1,3 +1,5 @@
+pub mod theme;
+
 use crate::domain::Task;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};

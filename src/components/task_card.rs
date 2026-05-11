@@ -19,18 +19,18 @@ pub fn TaskCard(task: Task, set_board: WriteSignal<Option<Board>>) -> impl IntoV
             column_id=task.column_id.clone()
             order=task.order
         >
-            <div class="bg-white p-3 rounded shadow hover:shadow-md transition-shadow cursor-move">
-                <h3 class="font-medium text-gray-800">{task.title}</h3>
+            <div class="bg-gray-700 dark:bg-white p-3 rounded shadow hover:shadow-md transition-all duration-300 ease-in-out cursor-move">
+                <h3 class="font-medium text-gray-100 dark:text-gray-800 transition-colors duration-300 ease-in-out">{task.title}</h3>
                 {move || {
                     if let Some(desc) = task.description.clone() {
-                        view! { <p class="text-sm text-gray-600 mt-1">{desc}</p> }.into_any()
+                        view! { <p class="text-sm text-gray-300 dark:text-gray-600 mt-1 transition-colors duration-300 ease-in-out">{desc}</p> }.into_any()
                     } else {
                         view! { }.into_any()
                     }
                 }}
                 <div class="flex justify-end gap-2 mt-2">
                     <button
-                        class="text-sm text-red-500 hover:text-red-700"
+                        class="text-sm text-red-400 dark:text-red-500 hover:text-red-300 dark:hover:text-red-700 transition-colors duration-300 ease-in-out"
                         on:click=move |_| {
                             let task_id = task_id_for_delete.clone();
                             let set_board = set_board.clone();
