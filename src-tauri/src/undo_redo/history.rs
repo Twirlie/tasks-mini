@@ -83,7 +83,7 @@ mod tests {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait]
     impl Command for MockCommand {
         async fn execute(&self, _storage: &dyn Storage) -> Result<(), UndoRedoError> {
             self.execute_called

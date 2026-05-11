@@ -1,3 +1,4 @@
+pub mod keyboard;
 pub mod theme;
 
 use crate::domain::Task;

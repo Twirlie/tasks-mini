@@ -1,6 +1,6 @@
-use crate::components::ColumnView;
+use crate::components::{ColumnView, ThemeButton, UndoRedoControls};
 use crate::domain::Board;
-use crate::utils::theme;
+use crate::utils::keyboard;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use wasm_bindgen::prelude::*;
@@ -16,7 +16,6 @@ pub fn App() -> impl IntoView {
     let (board, set_board) = signal::<Option<Board>>(None);
     let (loading, set_loading) = signal(true);
     let (error, set_error) = signal::<Option<String>>(None);
-    let (current_theme, set_current_theme) = signal(theme::get_theme());
 
     let load_board = move || {
         spawn_local(async move {
@@ -31,27 +30,13 @@ pub fn App() -> impl IntoView {
         });
     };
 
-    // Theme toggle function
-    let toggle_theme = move |_: leptos::ev::MouseEvent| {
-        let new_theme = if current_theme.get() == "dark" {
-            "light"
-        } else {
-            "dark"
-        };
-        theme::set_theme(new_theme);
-        set_current_theme.set(new_theme.to_string());
-    };
-
-    // Apply theme on first load
-    Effect::new(move |_| {
-        theme::apply_theme_on_load();
-        set_current_theme.set(theme::get_theme());
-    });
-
     // Load board on mount
     Effect::new(move |_| {
         load_board();
     });
+
+    // Set up keyboard shortcuts
+    keyboard::setup_keyboard_shortcuts(set_board);
 
     view! {
         <main class="min-h-screen bg-gray-900 dark:bg-gray-100 p-8 transition-colors duration-300 ease-in-out">
@@ -68,18 +53,10 @@ pub fn App() -> impl IntoView {
                             }.into_any()
                         }
                     }}
-                    <button
-                        on:click=toggle_theme
-                        class="px-4 py-2 rounded-lg bg-gray-800 dark:bg-gray-200 text-gray-100 dark:text-gray-800 hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors duration-300 ease-in-out"
-                    >
-                        {move || {
-                            if current_theme.get() == "dark" {
-                                "🌙 Dark"
-                            } else {
-                                "☀️ Light"
-                            }
-                        }}
-                    </button>
+                    <div class="flex gap-2">
+                        <UndoRedoControls set_board />
+                        <ThemeButton />
+                    </div>
                 </div>
             </div>
             {move || {

@@ -1,5 +1,6 @@
-use crate::column::service;
-use crate::storage_port::Storage;
+use crate::column::service as column_service;
+use crate::storage_port::{Storage, StorageError};
+use crate::task::service as task_service;
 use crate::task::types::Task;
 use crate::undo_redo::command::Command;
 use crate::undo_redo::error::UndoRedoError;
@@ -19,19 +20,22 @@ impl AddColumn {
     }
 }
 
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 impl Command for AddColumn {
     async fn execute(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
-        let column = service::add_column(storage, self.name.clone()).await?;
+        let column = column_service::add_column(storage, self.name.clone()).await?;
         *self.column_id.lock().await = Some(column.id);
         Ok(())
     }
 
     async fn undo(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
-        let id = self.column_id.lock().await.clone();
-        if let Some(id) = id {
-            service::delete_column(storage, &id).await?;
-        }
+        let column_id = self
+            .column_id
+            .lock()
+            .await
+            .take()
+            .ok_or(UndoRedoError::NothingToUndo)?;
+        column_service::delete_column(storage, &column_id).await?;
         Ok(())
     }
 }
@@ -52,7 +56,7 @@ impl RenameColumn {
     }
 }
 
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 impl Command for RenameColumn {
     async fn execute(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
         let board = storage.load_board().await?;
@@ -64,14 +68,14 @@ impl Command for RenameColumn {
                 crate::column::types::ColumnError::ColumnNotFound(self.column_id.clone()),
             ))?;
         *self.old_name.lock().await = Some(column.name.clone());
-        service::rename_column(storage, &self.column_id, self.new_name.clone()).await?;
+        column_service::rename_column(storage, &self.column_id, self.new_name.clone()).await?;
         Ok(())
     }
 
     async fn undo(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
         let old_name = self.old_name.lock().await.clone();
         if let Some(old_name) = old_name {
-            service::rename_column(storage, &self.column_id, old_name).await?;
+            column_service::rename_column(storage, &self.column_id, old_name).await?;
         }
         Ok(())
     }
@@ -90,7 +94,7 @@ impl DeleteColumn {
     }
 }
 
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 impl Command for DeleteColumn {
     async fn execute(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
         let mut board = storage.load_board().await?;
@@ -129,6 +133,137 @@ impl Command for DeleteColumn {
 
             storage.save_board(&board).await?;
         }
+        Ok(())
+    }
+}
+
+pub struct MoveTask {
+    pub task_id: String,
+    pub old_column_id: Arc<tokio::sync::Mutex<Option<String>>>,
+    pub old_order: Arc<tokio::sync::Mutex<Option<u32>>>,
+    pub new_column_id: String,
+    pub new_order: u32,
+}
+
+impl MoveTask {
+    pub fn new(task_id: String, new_column_id: String, new_order: u32) -> Self {
+        Self {
+            task_id,
+            old_column_id: Arc::new(tokio::sync::Mutex::new(None)),
+            old_order: Arc::new(tokio::sync::Mutex::new(None)),
+            new_column_id,
+            new_order,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Command for MoveTask {
+    async fn execute(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
+        // Store the old position before moving
+        let board = storage.load_board().await?;
+        let task = board
+            .tasks
+            .iter()
+            .find(|t| t.id == self.task_id)
+            .ok_or_else(|| UndoRedoError::Storage(StorageError::NotFound(self.task_id.clone())))?;
+
+        *self.old_column_id.lock().await = Some(task.column_id.clone());
+        *self.old_order.lock().await = Some(task.order);
+
+        // Move the task
+        task_service::move_task(
+            storage,
+            &self.task_id,
+            self.new_column_id.clone(),
+            self.new_order,
+        )
+        .await
+        .map_err(|e| {
+            UndoRedoError::Storage(StorageError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            )))
+        })?;
+        Ok(())
+    }
+
+    async fn undo(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
+        let old_column_id = self
+            .old_column_id
+            .lock()
+            .await
+            .take()
+            .ok_or(UndoRedoError::NothingToUndo)?;
+        let old_order = self
+            .old_order
+            .lock()
+            .await
+            .take()
+            .ok_or(UndoRedoError::NothingToUndo)?;
+
+        // Move the task back to its old position
+        task_service::move_task(storage, &self.task_id, old_column_id, old_order)
+            .await
+            .map_err(|e| {
+                UndoRedoError::Storage(StorageError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    e.to_string(),
+                )))
+            })?;
+        Ok(())
+    }
+}
+
+pub struct DeleteTask {
+    pub task_id: String,
+    pub task_data: Arc<tokio::sync::Mutex<Option<Task>>>,
+}
+
+impl DeleteTask {
+    pub fn new(task_id: String) -> Self {
+        Self {
+            task_id,
+            task_data: Arc::new(tokio::sync::Mutex::new(None)),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Command for DeleteTask {
+    async fn execute(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
+        // Store the task data before deleting
+        let board = storage.load_board().await?;
+        let task = board
+            .tasks
+            .iter()
+            .find(|t| t.id == self.task_id)
+            .ok_or_else(|| UndoRedoError::Storage(StorageError::NotFound(self.task_id.clone())))?;
+
+        *self.task_data.lock().await = Some(task.clone());
+
+        // Delete the task
+        task_service::delete_task(storage, &self.task_id)
+            .await
+            .map_err(|e| {
+                UndoRedoError::Storage(StorageError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    e.to_string(),
+                )))
+            })?;
+        Ok(())
+    }
+
+    async fn undo(&self, storage: &dyn Storage) -> Result<(), UndoRedoError> {
+        let task = self
+            .task_data
+            .lock()
+            .await
+            .take()
+            .ok_or(UndoRedoError::NothingToUndo)?;
+
+        // Restore the task
+        storage.create_task(&task).await?;
         Ok(())
     }
 }
