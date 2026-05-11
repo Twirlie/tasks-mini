@@ -37,7 +37,6 @@ pub trait Storage: Send + Sync {
 
 pub struct MockStorage {
     board: Mutex<Option<Board>>,
-    tasks: Mutex<HashMap<String, Task>>,
     columns: Mutex<HashMap<String, Column>>,
 }
 
@@ -136,7 +135,6 @@ impl MockStorage {
     pub fn new() -> Self {
         Self {
             board: Mutex::new(None),
-            tasks: Mutex::new(HashMap::new()),
             columns: Mutex::new(HashMap::new()),
         }
     }

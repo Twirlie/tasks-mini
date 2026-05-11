@@ -1,12 +1,11 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use std::path::PathBuf;
-use thiserror::Error;
 
-use crate::board::types::{Board, BoardError};
-use crate::column::types::{Column, ColumnError};
+use crate::board::types::Board;
+use crate::column::types::Column;
 use crate::storage_port::{Storage, StorageError};
-use crate::task::types::{Task, TaskError};
+use crate::task::types::Task;
 
 pub struct JsonStorage {
     data_dir: PathBuf,
@@ -334,7 +333,7 @@ mod tests {
             0,
         )
         .unwrap();
-        let created_task = storage.create_task(&task).await.unwrap();
+        let _created_task = storage.create_task(&task).await.unwrap();
 
         let loaded_board = storage.load_board().await.unwrap();
         assert_eq!(loaded_board.tasks.len(), 1);

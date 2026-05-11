@@ -1,5 +1,3 @@
-use wasm_bindgen::prelude::*;
-
 pub fn get_theme() -> String {
     let window = web_sys::window().unwrap();
     let storage = window.local_storage().unwrap().unwrap();

@@ -206,7 +206,7 @@ mod tests {
         }];
 
         // Test that ColumnView can be instantiated with proper props
-        let (board, set_board) = signal::<Option<Board>>(None);
+        let (_board, set_board) = signal::<Option<Board>>(None);
         let _view = view! {
             <ColumnView
                 column=column
@@ -227,7 +227,7 @@ mod tests {
         let tasks = vec![];
 
         // Test that ColumnView renders with add task button
-        let (board, set_board) = signal::<Option<Board>>(None);
+        let (_board, set_board) = signal::<Option<Board>>(None);
         let _view = view! {
             <ColumnView
                 column=column
@@ -260,7 +260,7 @@ mod tests {
         }];
 
         // Test that ColumnView renders DropZone and TaskCard for drag & drop
-        let (board, set_board) = signal::<Option<Board>>(None);
+        let (_board, set_board) = signal::<Option<Board>>(None);
         let _view = view! {
             <ColumnView
                 column=column
