@@ -1,7 +1,45 @@
-# Tauri + Leptos
+# Tasks Mini
 
-This template should help get you started developing with Tauri and Leptos.
+A lightweight personal task management desktop app with Kanban-style interface. Built with Rust, Tauri, and Leptos.
 
-## Recommended IDE Setup
+## Quick Start
 
-[VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+### Prerequisites
+
+- Rust (latest stable)
+- Node.js (for frontend tooling)
+- System build tools (cargo, make, etc.)
+
+### Install Dependencies
+
+```bash
+# Install Rust dependencies
+cargo build
+
+# Install frontend dependencies  
+npm install
+```
+
+### Development
+
+```bash
+# Start Tauri dev server (runs both frontend and backend)
+cargo tauri dev
+
+# Or start frontend only (if Tauri server already running)
+trunk serve
+```
+
+### Build
+
+```bash
+# Build for release
+cargo tauri build
+
+# Frontend only
+trunk build
+```
+
+## IDE Setup
+
+VS Code + rust-analyzer + Tauri extension recommended.
