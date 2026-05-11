@@ -1,0 +1,36 @@
+---
+title: "Extract TaskCard Component"
+status: "needs-triage"
+created: "2025-06-17T12:00:00Z"
+updated: "2025-06-17T12:00:00Z"
+labels: ["frontend", "refactoring", "components", "taskcard"]
+---
+
+## What to build
+
+Extract the TaskCard component from `src/app.rs` into a dedicated `src/components/task_card.rs` file. This isolates the task card UI logic and makes it easier to test and maintain independently.
+
+## Acceptance criteria
+
+- [ ] Create `src/components/mod.rs` with re-exports
+- [ ] Create `src/components/task_card.rs` with the TaskCard component
+- [ ] Update `src/app.rs` to import TaskCard from the components module
+- [ ] Add component tests for TaskCard rendering and task deletion functionality
+- [ ] Verify the TaskCard component still renders and functions correctly after refactoring
+
+## Blocked by
+
+- #1 Extract Domain Types Module (needs domain types for Task struct)
+- #2 Extract Utils Module with Drag & Drop (needs DraggableTask component)
+
+## User stories covered
+
+3. As a developer, I want UI components to be in separate files, so that I can focus on individual component logic without distraction.
+7. As a developer, I want components to be testable in isolation, so that I can write focused unit tests for specific UI behavior.
+
+## TDD Cycles
+
+1. `test TaskCard rendering` → extract TaskCard component → verify component renders with task data
+2. `test task deletion` → extract delete functionality → ensure delete button works correctly
+3. `test component imports` → create components mod.rs → verify app.rs can import TaskCard
+4. `test drag integration` → ensure DraggableTask wrapper works → verify drag & drop still functions
