@@ -1,52 +1,22 @@
-# Issue Tracker Configuration
+# Issue tracker: GitHub
 
-## Type: Local Markdown
+Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
-Issues are tracked as markdown files in this repository under `.scratch/<feature>/`.
+## Conventions
 
-## Workflow
+- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
+- **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
+- **Comment on an issue**: `gh issue comment <number> --body "..."`
+- **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
+- **Close**: `gh issue close <number> --comment "..."`
 
-- **Creating issues**: Skills create markdown files under `.scratch/<feature-name>/`
-- **File format**: Each issue is a separate markdown file with frontmatter
-- **Directory structure**: `.scratch/` contains subdirectories for each feature/epic
-- **Status tracking**: Issue status is managed through frontmatter fields
+Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
 
-## Frontmatter Schema
+## When a skill says "publish to the issue tracker"
 
-```yaml
----
-title: "Issue Title"
-status: "needs-triage" | "needs-info" | "ready-for-agent" | "ready-for-human" | "wontfix"
-created: "YYYY-MM-DDTHH:MM:SSZ"
-updated: "YYYY-MM-DDTHH:MM:SSZ"
-labels: ["label1", "label2"]
-assignee: "username" (optional)
----
-```
+Create a GitHub issue.
 
-## Skills Integration
+## When a skill says "fetch the relevant ticket"
 
-- `to-issues`: Creates new issue files under `.scratch/`
-- `triage`: Updates issue status and labels in frontmatter
-- `to-prd`: Converts conversation context to issue files
-- `qa`: Reads and updates existing issues
-
-## Agent Brief Format
-
-Agent briefs MUST include a **TDD Cycles** section instead of a flat "Tests" list. Each cycle is a vertical RED→GREEN→REFACTOR slice:
-
-```markdown
-**TDD Cycles** (execute one at a time, RED→GREEN→REFACTOR):
-1. `test description` → what to implement → refactor opportunity
-2. `test description` → what to implement → refactor opportunity
-...
-```
-
-This replaces flat `**Tests:** ...` sections. Agents execute one cycle at a time, never batch all tests then all implementation (horizontal slicing).
-
-## Benefits
-
-- Issues are version-controlled with the codebase
-- No external dependencies or services required
-- Perfect for solo projects or private repositories
-- Issues can be edited directly in the IDE
+Run `gh issue view <number> --comments`.
